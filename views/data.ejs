@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avalanche Forecasting</title>
+    <script type="text/javascript" src='../routes/home.js'></script> 
+    <style>
+        /* Your CSS styles remain unchanged */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 1em;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-around;
+            margin: 2em;
+        }
+
+        .column {
+            flex: 1;
+            padding: 1em;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin: 0 1em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1em;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1> AvaRakshak : Avalanche Forecasting</h1>
+    </header>
+    <br>
+    <br>
+
+    <div class="container">
+        <div class="column" id="weatherColumn">
+            <h2>Weather Forecast</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Region</th>
+                        <th>Temperature</th>
+                        <th>Wind Speed (kph)</th>
+                        <th>Humidity</th>
+                        <th>Pressure</th>
+                        <th>Rain</th>
+                    </tr>
+                </thead>
+                <tbody id="weatherDataTableBody">
+                    <!-- Weather data from the API will be displayed here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="column" id="snowDataColumn">
+            <h2>Snow Data</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Snow Water Equivalent (in)</th>
+                        <th>Snow Depth (in)</th>
+                    </tr>
+                </thead>
+                <tbody id="snowDataTableBody">
+                    <!-- Snow data from the API will be displayed here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="column" id="photoUploadColumn">
+            <h2>Upload Photo</h2>
+            <label for="photoInput">Choose a Photo</label>
+            <input type="file" id="photoInput" accept="image/*">
+
+            <button id="uploadButton">Upload Photo</button>
+
+            <div id="uploadStatus"></div>
+        </div>
+    </div>
+    <p text-align: center>
+        <h3>Level of danger: <%=level%></h3>
+        <h3> <%=description%></h3>
+    </p>
+
+    <script>
+        // Display Snow Data and Weather Data
+        const snowData = {
+            "station_information": {
+                "name": "Kelly Station",
+                "triplet": "1175:AK:SNTL",
+                "elevation": 310,
+                "location": { "lat": 67.93333, "lng": -162.28333 }
+            },
+            "data": [
+                {
+                    "Date": "<%= date0 %>",
+                    "Snow Water Equivalent (in)": "<%= water0 %>",
+                    "Snow Depth (in)": "<%= depth0 %>"
+                },
+                {
+                    "Date": "<%= date1 %>",
+                    "Snow Water Equivalent (in)": "<%= water1 %>",
+                    "Snow Depth (in)": "<%= depth1 %>"
+                }
+            ]
+        };
+
+        const weatherData = {
+            "location": {
+                "region": "<%= region%>",
+                "temp_c": "<%= temp%>",
+                "wind_kph": "<%= wind%>",
+                "humidity": "<%= humidity%>",
+                "pressure_mb": "<%= pressure%>",
+                "precip_mm": "<%= rain%>"
+            },
+        };
+
+        function displaySnowData(data) {
+            const tableBody = document.getElementById('snowDataTableBody');
+            tableBody.innerHTML = '';
+
+            data.forEach(entry => {
+                const row = document.createElement('tr');
+                for (const key in entry) {
+                    const cell = document.createElement('td');
+                    cell.textContent = entry[key];
+                    row.appendChild(cell);
+                }
+                tableBody.appendChild(row);
+            });
+        }
+
+        function displayWeatherData(data) {
+            const tableBody = document.getElementById('weatherDataTableBody');
+            tableBody.innerHTML = '';
+
+            const row = document.createElement('tr');
+            const propertiesToDisplay = ['region', 'temp_c', 'wind_kph', 'humidity', 'pressure_mb', 'precip_mm'];
+
+            propertiesToDisplay.forEach(property => {
+                const cell = document.createElement('td');
+                cell.textContent = data[property];
+                row.appendChild(cell);
+            });
+
+            tableBody.appendChild(row);
+        }
+
+        displaySnowData(snowData.data);
+        displayWeatherData(weatherData.location);
+
+        // Upload Photo
+        document.getElementById('uploadButton').addEventListener('click', async () => {
+            const photoInput = document.getElementById('photoInput');
+            const uploadStatus = document.getElementById('uploadStatus');
+
+            const file = photoInput.files[0];
+
+            if (file) {
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+
+                    const response = await fetch('https://9c6d-112-196-77-202.ngrok-free.app/predict', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    //console.log(response.json());
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        
+                        const label = result.label;
+                        const avalanche = result.avalanche;
+
+                        uploadStatus.textContent = `File uploaded successfully. Result: ${JSON.stringify(result)}`;
+                    } else {
+                        uploadStatus.textContent = 'Error uploading file.';
+                    }
+                } catch (error) {
+                    console.error('Error uploading file:', error.message);
+                    uploadStatus.textContent = 'Error uploading file.';
+                }
+            } else {
+                uploadStatus.textContent = 'Please choose a file.';
+            }
+        });
+    </script>
+</body>
+</html>
